@@ -1,0 +1,109 @@
+<html><head><meta content="text/html; charset=ISO-8859-1" http-equiv="Content-Type"><title>Constraint Propagation in Python</title><meta name="generator" content="LOGILAB adaptation of DocBook XSL Stylesheets V1.29"><meta name="language" content="en"><meta name="organization" content="Logilab S.A."></head><body bgcolor="#FFFFFF" text="#000000"><table border="0" width="100%" cellspacing="2" cellpadding="0"><tr><td width="20%"><img src="file:/home/logilab/public/logos/logilab.gif" width="150"></td><td width="80%"><h3 class="template"><center>Constraint Propagation in Python</center></h3><hr noshade="yes" size="5" width="100%"></td></tr></table><table width="100%" cellspacing="0" cellpadding="8"><tr><td width="5%" bgcolor="#FFAA1B" valign="top" align="left"> </td><td width="95%" valign="top" align="left"><div id="constraint-propagation-manual" class="article"><div class="article"><p> </p><h1 class="title0"><center>Constraint Propagation in Python</center></h1><h2 class="subtitle0"><center><i></i></center></h2><p> </p><table border="0" width="100%"><tr><td width="50%"><p align="left"><b>Alexandre Fayolle</b></p></td><td width="50%"></td></tr></table><hr width="100%"><p> </p><h3 class="titlepage-title">Copyright © 2002 by Logilab</h3>This manual presents how to use the constraint package to solve
+	constraint propagation problems in Python. It also presents the
+	the extension mechanisms available in the package</div><div class="sect1"><a name="using"></a><div class="sect1"><p> </p><h1 class="title2"><a name="using"></a>1. Using the constraint package<br><hr width="100%"></h1></div><div class="sect2"><a name="id2709498"></a><div class="sect2"><h2 class="title3"><a name="id2709498"></a>1.1. Sample problem</h2></div><p>Let's take a real-life problem to get started. You're organising a
+      an international Python Programming event, and you have to schedule
+      conferences. There are 10 different conferences, you have 3 conference
+      rooms available during 2 days. Each conference is 4 hours long, so you
+      can organize at most 2 conferences per day in a given room.</p><p>Conferences 3, 4, 5 and 6 have to take place in room C, because
+      it's the only one with Internet access.</p><p>Some of the speakers are not available on both days, so
+      conferences 1, 5 and 10 have to take place on day 1, and conferences 2,
+      3 4 and 9 on day 2.</p><p>You have made a quick poll over the python mailing list, and it
+      turns out that people attending some of the conferences are likely to be
+      attending some other conferences too, so you want to make sure that such
+      conferences are not scheduled at the same time. A careful statistical
+      study has found 4 groups of potential attendees. The first group want to
+      attend conferences 1, 2, 3 and 10, the second conferences 2, 6, 8 and 9
+      the third group conferences 3, 5, 6 and 7, and the last group
+      conferences 1, 3, 7 and 8.</p><p>You've tried to put this on a whiteboard, but this quickly proved
+      to be tedious, so you thought about using the constraint solving
+      package.</p></div><div class="sect2"><a name="id2709551"></a><div class="sect2"><h2 class="title3"><a name="id2709551"></a>1.2. Variables, Domains and Constraints</h2></div><p>The first thing to find out in order to use the constraint package
+      is what the variables are, what their domains are and what the
+      constraints between variables are.</p><p>If we look at our problem, the variables are the conferences' room
+      and time slot, and for each conference, the domain is the cross product
+      of the set of available rooms with the set of available time slots. We
+      could say that the conferences which require Internet access have a
+      different domain, because they need to be in room C. This is perfectly
+      valid. However, we will model this as a constraint.</p><p>Variables are manipulated as names, stored in character
+      strings. Domains are instances of the fd.FiniteDomain class, which is
+      instantiated with a list of values. Domains are manipulated through a
+      dictionnary mapping a variable to its domain. Do not use the same domain
+      instance for several variables, because in the current implementation,
+      this is guaranteed to break. The code looks like this:
+<pre class="programlisting">
+<font color="#008000"># import Repository class and fd module, </font>
+<font color="#C00000">from</font> logilab.constraint <font color="#C00000">import</font> *
+variables = (<font color="#004080">'c01'</font>,<font color="#004080">'c02'</font>,<font color="#004080">'c03'</font>,<font color="#004080">'c04'</font>,<font color="#004080">'c05'</font>,<font color="#004080">'c06'</font>,<font color="#004080">'c07'</font>,<font color="#004080">'c08'</font>,<font color="#004080">'c09'</font>,<font color="#004080">'c10'</font>)
+values = [(room,slot) 
+          <font color="#C00000">for</font> room <font color="#C00000">in</font> (<font color="#004080">'room A'</font>,<font color="#004080">'room B'</font>,<font color="#004080">'room C'</font>) 
+          <font color="#C00000">for</font> slot <font color="#C00000">in</font> (<font color="#004080">'day 1 AM'</font>,<font color="#004080">'day 1 PM'</font>,<font color="#004080">'day 2 AM'</font>,<font color="#004080">'day 2 PM'</font>)]
+domains = {}
+<font color="#C00000">for</font> v <font color="#C00000">in</font> variables:
+    domains[v]=fd.FiniteDomain(values)
+</pre>
+      </p><p>Constraints, like domains are objects. So far the only class that
+      can be used is fd.Expression and fd.BinaryExpression. We use the
+      fd.make_expression factory function to build an instance of the right
+      class, depending on the number of variables that is passed. This
+      function takes a list of affected variables and a python expression that
+      evaluates to true if the constraint is satisfied. </p><p>We have several constraints on our variables. First some
+	conferences need to take place in room C:
+<pre class="programlisting">
+constraints = []
+<font color="#C00000">for</font> conf <font color="#C00000">in</font> (<font color="#004080">'c03'</font>,<font color="#004080">'c04'</font>,<font color="#004080">'c05'</font>,<font color="#004080">'c06'</font>):
+    constraints.append(fd.make_expression((conf,),
+                                          &quot;%s[0] == 'room C'&quot;%conf))
+</pre>
+      </p><p>Availability of the speakers impose some more constraints:
+<pre class="programlisting">
+<font color="#C00000">for</font> conf <font color="#C00000">in</font> (<font color="#004080">'c01'</font>,<font color="#004080">'c05'</font>,<font color="#004080">'c10'</font>):
+    constraints.append(fd.make_expression((conf,),
+                                          &quot;%s[1].startswith(<font color="#004080">'day 1'</font>)&quot;%conf))
+<font color="#C00000">for</font> conf <font color="#C00000">in</font> (<font color="#004080">'c02'</font>,<font color="#004080">'c03'</font>,<font color="#004080">'c04'</font>,<font color="#004080">'c09'</font>):
+    constraints.append(fd.make_expression((conf,),
+                                          &quot;%s[1].startswith(<font color="#004080">'day 2'</font>)&quot;%conf))
+</pre>
+      </p><p>Then we want to say that some of the conferences should not be
+	scheduled at the same time:
+<pre class="programlisting">
+groups = ((<font color="#004080">'c01'</font>,<font color="#004080">'c02'</font>,<font color="#004080">'c03'</font>,<font color="#004080">'c10'</font>),
+          (<font color="#004080">'c02'</font>,<font color="#004080">'c06'</font>,<font color="#004080">'c08'</font>,<font color="#004080">'c09'</font>),
+          (<font color="#004080">'c03'</font>,<font color="#004080">'c05'</font>,<font color="#004080">'c06'</font>,<font color="#004080">'c07'</font>),
+          (<font color="#004080">'c01'</font>,<font color="#004080">'c03'</font>,<font color="#004080">'c07'</font>,<font color="#004080">'c08'</font>))
+<font color="#C00000">for</font> g <font color="#C00000">in</font> groups:
+    <font color="#C00000">for</font> conf1 <font color="#C00000">in</font> g:
+        <font color="#C00000">for</font> conf2 <font color="#C00000">in</font> g:
+            <font color="#C00000">if</font> conf2 &gt; conf1:
+                constraints.append(fd.make_expression((conf1,conf2),
+                                                      <font color="#004080">'%s[1] != %s[1]'</font>%\
+                                                        (conf1,conf2)))
+</pre>
+      </p><p>Finally, no two conferences can be scheduled in the same room at
+	the same time:
+<pre class="programlisting">
+<font color="#C00000">for</font> conf1 <font color="#C00000">in</font> variables:
+    <font color="#C00000">for</font> conf2 <font color="#C00000">in</font> variables:
+        <font color="#C00000">if</font> conf2 &gt; conf1:
+            constraints.append(fd.make_expression((conf1,conf2),
+                                                  <font color="#004080">'%s != %s'</font>%(conf1,conf2)))
+</pre>
+      </p></div><div class="sect2"><a name="id2706665"></a><div class="sect2"><h2 class="title3"><a name="id2706665"></a>1.3. The Repository class</h2></div><p>Repository objects are used to hold the variables, domains and
+	constraints describing the problem. A Solver object can solve the
+	problem described by a Repository.</p><p>Here's the final touch:
+<pre class="programlisting">
+r = Repository(variables,domains,constraints)
+solutions = Solver().solve(r)
+<font color="#C00000">print</font> solutions
+</pre>
+      </p></div><p>The code is available in the file conferences.py in the examples
+      directory of the distribution. It finds 64 possible schedules in a
+      couple of seconds on my machine.</p><div class="sect2"><a name="id2706710"></a><div class="sect2"><h2 class="title3"><a name="id2706710"></a>1.4. Performance considerations</h2></div><p>There is still a lot of things to be worked on with this
+	package. Here are a few tips that can help you to use it in its
+	current state:
+	<div class="itemizedlist"><ul><li><a name="id2706724"></a><p class="in-li"><a name="id2706724"></a>Try to avoid constraints with a lot of variables. It
+	  is better to have several binary constraints than one big N-ary
+	  constraint with several 'and' conditions</p></li><li><a name="id2706733"></a><p class="in-li"><a name="id2706733"></a>If you cannot avoid constraint with lots of
+	  variable, put the constraints with less variables first in the list,
+	  because they will get evaluated before, will take less time to
+	  process, and will hopefully reduce the domains of the variables
+	  playing a role in your big constraints</p></li></ul></div>
+      </p></div></div><div class="sect1"><a name="extending"></a><div class="sect1"><p> </p><h1 class="title2"><a name="extending"></a>2. Extending the constraint package<br><hr width="100%"></h1></div><p>WRITE ME!</p></div></div></td></tr></table></body></html>

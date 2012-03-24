@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE article SYSTEM "/home/logilab/docbook/dtd/docbookx.dtd" >
+<article id='constraint-propagation-manual' lang='en'>
+  <artheader>
+    <title>Constraint Propagation in Python</title>
+    <author>
+      <firstname>Alexandre</firstname>
+      <surname>Fayolle</surname>
+    </author>
+    <abstract>
+      <simpara>This manual presents how to use the constraint package to solve
+	constraint propagation problems in Python. It also presents the
+	the extension mechanisms available in the package</simpara>
+    </abstract>
+    <copyright><year>2002-2005</year><holder>Logilab</holder>
+    </copyright>
+    <revhistory>
+      <revision>
+	<revnumber>$Revision: 1.6 $</revnumber>
+	<date>$Date: 2005-09-05 15:56:26 $</date>
+	<authorinitials>$Author: alf $</authorinitials>
+      </revision>
+    </revhistory>
+  </artheader>
+
+
+  <sect1 id='using'><title>Using the constraint package</title>
+
+    <sect2><title>Sample problem</title> 
+
+      <para>Let's take a real-life problem to get started. You're organising a
+      an international Python Programming event, and you have to schedule
+      conferences. There are 10 different conferences, you have 3 conference
+      rooms available during 2 days. Each conference is 4 hours long, so you
+      can organize at most 2 conferences per day in a given room.</para> 
+
+      <para>Conferences 3, 4, 5 and 6 have to take place in room C, because
+      it's the only one with Internet access.</para>
+
+      <para>Some of the speakers are not available on both days, so
+      conferences 1, 5 and 10 have to take place on day 1, and conferences 2,
+      3 4 and 9 on day 2.</para>
+
+      <para>You have made a quick poll over the python mailing list, and it
+      turns out that people attending some of the conferences are likely to be
+      attending some other conferences too, so you want to make sure that such
+      conferences are not scheduled at the same time. A careful statistical
+      study has found 4 groups of potential attendees. The first group want to
+      attend conferences 1, 2, 3 and 10, the second conferences 2, 6, 8 and 9
+      the third group conferences 3, 5, 6 and 7, and the last group
+      conferences 1, 3, 7 and 8.</para>
+
+      <para>You've tried to put this on a whiteboard, but this quickly proved
+      to be tedious, so you thought about using the constraint solving
+      package.</para>
+
+    </sect2>
+
+    <sect2><title>Variables, Domains and Constraints</title>
+
+      <para>The first thing to find out in order to use the constraint package
+      is what the variables are, what their domains are and what the
+      constraints between variables are.</para>
+
+      <para>If we look at our problem, the variables are the conferences' room
+      and time slot, and for each conference, the domain is the cross product
+      of the set of available rooms with the set of available time slots. We
+      could say that the conferences which require Internet access have a
+      different domain, because they need to be in room C. This is perfectly
+      valid. However, we will model this as a constraint.</para>
+
+      <para>Variables are manipulated as names, stored in character
+      strings. Domains are instances of the fd.FiniteDomain class, which is
+      instantiated with a list of values. Domains are manipulated through a
+      dictionnary mapping a variable to its domain. Do not use the same domain
+      instance for several variables, because in the current implementation,
+      this is guaranteed to break. The code looks like this:
+<programlisting role='python' >
+<emphasis role='comment'># import Repository class and fd module, </emphasis>
+<emphasis role='keyword'>from</emphasis> logilab.constraint <emphasis role='keyword'>import</emphasis> *
+variables = (<emphasis role='string'>'c01'</emphasis>,<emphasis role='string'>'c02'</emphasis>,<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c04'</emphasis>,<emphasis role='string'>'c05'</emphasis>,<emphasis role='string'>'c06'</emphasis>,<emphasis role='string'>'c07'</emphasis>,<emphasis role='string'>'c08'</emphasis>,<emphasis role='string'>'c09'</emphasis>,<emphasis role='string'>'c10'</emphasis>)
+values = [(room,slot) 
+          <emphasis role='keyword'>for</emphasis> room <emphasis role='keyword'>in</emphasis> (<emphasis role='string'>'room A'</emphasis>,<emphasis role='string'>'room B'</emphasis>,<emphasis role='string'>'room C'</emphasis>) 
+          <emphasis role='keyword'>for</emphasis> slot <emphasis role='keyword'>in</emphasis> (<emphasis role='string'>'day 1 AM'</emphasis>,<emphasis role='string'>'day 1 PM'</emphasis>,<emphasis role='string'>'day 2 AM'</emphasis>,<emphasis role='string'>'day 2 PM'</emphasis>)]
+domains = {}
+<emphasis role='keyword'>for</emphasis> v <emphasis role='keyword'>in</emphasis> variables:
+    domains[v]=fd.FiniteDomain(values)
+</programlisting>
+      </para>
+
+      <para>Constraints, like domains are objects. So far the only class that
+      can be used is fd.Expression and fd.BinaryExpression. We use the
+      fd.make_expression factory function to build an instance of the right
+      class, depending on the number of variables that is passed. This
+      function takes a list of affected variables and a python expression that
+      evaluates to true if the constraint is satisfied. </para>
+
+      <para>We have several constraints on our variables. First some
+	conferences need to take place in room C:
+<programlisting role='python' >
+constraints = []
+<emphasis role='keyword'>for</emphasis> conf <emphasis role='keyword'>in</emphasis> (<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c04'</emphasis>,<emphasis role='string'>'c05'</emphasis>,<emphasis role='string'>'c06'</emphasis>):
+    constraints.append(fd.make_expression((conf,),
+                                          "%s[0] == 'room C'"%conf))
+</programlisting >
+      </para>
+
+      <para>Availability of the speakers impose some more constraints:
+<programlisting role='python' >
+<emphasis role='keyword'>for</emphasis> conf <emphasis role='keyword'>in</emphasis> (<emphasis role='string'>'c01'</emphasis>,<emphasis role='string'>'c05'</emphasis>,<emphasis role='string'>'c10'</emphasis>):
+    constraints.append(fd.make_expression((conf,),
+                                          "%s[1].startswith(<emphasis role='string'>'day 1'</emphasis>)"%conf))
+<emphasis role='keyword'>for</emphasis> conf <emphasis role='keyword'>in</emphasis> (<emphasis role='string'>'c02'</emphasis>,<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c04'</emphasis>,<emphasis role='string'>'c09'</emphasis>):
+    constraints.append(fd.make_expression((conf,),
+                                          "%s[1].startswith(<emphasis role='string'>'day 2'</emphasis>)"%conf))
+</programlisting>
+      </para>
+
+      <para>Then we want to say that some of the conferences should not be
+	scheduled at the same time:
+<programlisting role='python'>
+groups = ((<emphasis role='string'>'c01'</emphasis>,<emphasis role='string'>'c02'</emphasis>,<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c10'</emphasis>),
+          (<emphasis role='string'>'c02'</emphasis>,<emphasis role='string'>'c06'</emphasis>,<emphasis role='string'>'c08'</emphasis>,<emphasis role='string'>'c09'</emphasis>),
+          (<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c05'</emphasis>,<emphasis role='string'>'c06'</emphasis>,<emphasis role='string'>'c07'</emphasis>),
+          (<emphasis role='string'>'c01'</emphasis>,<emphasis role='string'>'c03'</emphasis>,<emphasis role='string'>'c07'</emphasis>,<emphasis role='string'>'c08'</emphasis>))
+<emphasis role='keyword'>for</emphasis> g <emphasis role='keyword'>in</emphasis> groups:
+    <emphasis role='keyword'>for</emphasis> conf1 <emphasis role='keyword'>in</emphasis> g:
+        <emphasis role='keyword'>for</emphasis> conf2 <emphasis role='keyword'>in</emphasis> g:
+            <emphasis role='keyword'>if</emphasis> conf2 > conf1:
+                constraints.append(fd.make_expression((conf1,conf2),
+                                                      <emphasis role='string'>'%s[1] != %s[1]'</emphasis>%\
+                                                        (conf1,conf2)))
+</programlisting>
+      </para>
+
+      <para>Finally, no two conferences can be scheduled in the same room at
+	the same time:
+<programlisting role='python'>
+<emphasis role='keyword'>for</emphasis> conf1 <emphasis role='keyword'>in</emphasis> variables:
+    <emphasis role='keyword'>for</emphasis> conf2 <emphasis role='keyword'>in</emphasis> variables:
+        <emphasis role='keyword'>if</emphasis> conf2 > conf1:
+            constraints.append(fd.make_expression((conf1,conf2),
+                                                  <emphasis role='string'>'%s != %s'</emphasis>%(conf1,conf2)))
+</programlisting>
+      </para>
+
+    </sect2>
+
+    <sect2><title>The Repository class</title>
+      <para>Repository objects are used to hold the variables, domains and
+	constraints describing the problem. A Solver object can solve the
+	problem described by a Repository.</para>
+
+      <para>Here's the final touch:
+<programlisting role='python'>
+r = Repository(variables,domains,constraints)
+solutions = Solver().solve(r)
+<emphasis role='keyword'>print</emphasis> solutions
+</programlisting>
+      </para>
+    </sect2>
+
+    <para>The code is available in the file conferences.py in the examples
+      directory of the distribution. It finds 64 possible schedules in a
+      couple of seconds on my machine.</para>
+
+    <sect2><title>Performance considerations</title>
+      <para>There is still a lot of things to be worked on with this
+	package. Here are a few tips that can help you to use it in its
+	current state:
+	<itemizedlist>
+	  <listitem><para>Try to avoid constraints with a lot of variables. It
+	  is better to have several binary constraints than one big N-ary
+	  constraint with several 'and' conditions</para></listitem>
+
+	  <listitem><para>If you cannot avoid constraint with lots of
+	  variable, put the constraints with less variables first in the list,
+	  because they will get evaluated before, will take less time to
+	  process, and will hopefully reduce the domains of the variables
+	  playing a role in your big constraints</para>
+	    </listitem>
+	</itemizedlist>
+      </para>
+    </sect2>
+
+  </sect1>
+  <sect1 id='extending'><title>Extending the constraint package</title>
+
+    <para>WRITE ME!</para>
+<!--
+    <sect2><title>The interfaces</title>
+      <para></para>
+    </sect2>
+
+    <sect2><title>The abstract implementations</title>
+      <para></para>
+    </sect2>
+
+    <sect2><title>AbstractConstraint Narrowing algorithm</title>
+      <para></para>
+    </sect2>
+-->
+
+  </sect1>
+</article>

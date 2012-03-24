@@ -1,0 +1,178 @@
+﻿Worker Scheduling -- Usage Example
+Tyler Young, David Schoonover, Nick Spear, and Scott Abbey
+
+
+        Our program will demonstrate the use of constraint optimization in creating employee schedules.  To demonstrate the usefulness of our program, we have developed an example situation where it might be deployed.
+
+
+Example Situation: A university cafeteria manager needs to schedule student workers to help serve food.  The schedule is recreated every two weeks to help fit the needs of the students, who have many events they need to schedule their time around.  Since the student workers are only assisting the non-student employees, the number needed for each shift will also vary each day and each time the schedule is recreated.
+
+
+        A full-blown system to facilitate this scheduling would probably be best implemented as a web front-end to an AI program.  The manager can outline the hours needed and number of workers in each session for the days in the schedule period, then send a form out to all the student workers where they indicate that they are able to work, unable to work, or perhaps state some level of preference for each date, as appropriate. In addition, the manager might like to impose a maximum or minimum number of hours worked by each student in the period, and the student workers may like to declare their own maximum or minimum number of hours.  Since some shifts are long, it would be nice to allow workers to declare availability for partial shifts, perhaps breaking the schedule into half-hour blocks. For now, we’ll just work with the assumption that each shift must be worked in full (an administrator could allow shifts to be split in two by simply creating two adjacent shifts).
+
+
+        Since a front-end website as described would require a nontrivial amount of time to create, and the focus of the project is on the AI techniques used and not the data collection process, we’ll simply use text data files that simulate the output of such a web application.  Here are some example files that may be generated. For the sake of making the examples easy to follow, we’ll use an abbreviated scheduling period of 5 days with 3 shifts per day and a total of 15 student workers.  Also for simplicity, we’ll just use a file with specific formatting instead of a database or other sophisticated solution.
+
+
+Each line could have a format like:
+
+
+[dayId],[shiftId],[startTime],[endTime],[numWorkers]
+
+
+In this example there are no adjacent (time-wise) shifts, so the program wouldn’t actually care what time they happened at, but if there were shifts adjacent to each other, these times must be present, otherwise workers may be scheduled on and off during one longer period, which would be undesirable. Here is a sample file:
+
+
+1,1,0630,0900,4
+1,2,1030,1400,2
+1,3,1630,1900,5
+2,1,0630,0900,4
+2,2,1030,1400,2
+2,3,1630,1900,5
+3,1,0630,0900,4
+3,2,1030,1400,2
+3,3,1630,1900,5
+4,1,0630,0900,4
+4,2,1030,1400,2
+4,3,1630,1900,5
+5,1,0630,0900,4
+5,2,1030,1400,2
+5,3,1630,1900,2
+
+
+The user responses to the schedule will be in the format:
+
+
+[userId],[dayId],[shiftId],[availabilityLevel]
+
+
+We’ll say availabilityLevel ranges from 0 to 2, with 2 being totally available, 0 being definitely not available, and 1 being available if necessary. Here is a sample file:
+
+
+1,1,1,2
+1,1,2,2
+1,1,3,0
+1,2,1,0
+1,2,2,0
+1,2,3,2
+…
+15,5,1,1
+15,5,2,2
+15,5,3,2
+
+
+In a more human-readable notation, this sample data looks like this:
+
+
+User
+	Shift (Day.Number)
+	Availability
+	1
+	1.1
+	Yes
+	1
+	1.2
+	Yes
+	1
+	1.3
+	No
+	1
+	2.1
+	No
+	1
+	2.2
+	No
+	. . . 
+	
+
+	
+
+	2
+	1.1
+	If needed
+	2
+	1.2
+	No
+	2
+	1.3
+	If needed
+	2
+	2.1
+	Yes
+	2
+	2.2
+	If needed
+	. . .
+	
+
+	
+
+	15
+	5.3
+	Yes
+	
+
+
+
+In addition to these two files, there should also be a file with some extra parameters, allowing the manager to set some worker limits:
+
+
+[maxTotalHours],[minTotalHours],[maxHoursPerDay]
+
+
+And each worker to declare his or her own general requests:
+
+
+[userId],[maxTotalHours],[minTotalHours]
+
+
+Here’s a sample of this file:
+
+
+20,0,6
+1,10,5
+2,5,0
+3,0,0
+4,20,10
+…
+15,8,0
+
+
+Our program would take the above three files as input, then use constraint satisfaction to produce a schedule which satisfies both the administrator’s requirements (all shifts filled by the required number of workers, with all workers scheduled for no more than the maximum number of hours and no less than the minimum number of hours) and the worker’s requirements (never scheduling workers for times when they are unable to work, and scheduling them only for times when they indicated total availability, as much as possible). If such a schedule cannot be created--not enough workers indicated even possible availability to work some shifts--the program will inform the administrator.
+
+
+At this point, the solver runs and, by examining each worker variable and its associated constraints, constructs a schedule that satisfies the requirements.
+
+
+And the result is a schedule listing which workers are filling each time slot and a description of any conflicts present in the generated schedule (workers being required to fill a shift for which they did not indicate full availability). The number of such conflicts will be minimized, so that as much as possible, workers get only the shifts they explicitly request. (Note that it is not considered a conflict for a worker to not be scheduled for a shift for which they are fully willing to work.)
+
+
+An example result may be in the format:
+
+
+[dayId],[shiftId],[workerId]
+
+
+So the file would look something like:
+
+
+1,1,14
+1,1,12
+1,1,5
+1,1,7
+1,2,5
+1,2,7
+1,3,11
+1,3,10
+1,3,9
+1,3,8
+1,3,13
+...
+5,3,6
+5,3,8
+
+
+By considering the example table from before, we see that Worker 1 indicated full availability for shifts 1 and 2 on day 1, so in the output file, they would be scheduled for those shifts before Worker 2, who indicated they were available “if needed” for shift 1 of day 1. Likewise, both Workers 1 and 2 indicated they were not available at all for shift 2 of day 2; if too many other workers indicated the same, the schedule as a whole might be considered unsatisfiable, giving an error to the administrator rather than an output schedule file.
+
+
+The output file, listing each shift’s scheduled workers, could be used again by the theoretical front-end website to display the new schedule to interested parties for review. Any small change requests would probably be handled manually, unless a large change was needed, in which case the same program could be run again with new data.

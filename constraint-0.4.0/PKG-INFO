@@ -1,0 +1,15 @@
+Metadata-Version: 1.0
+Name: logilab-constraint
+Version: 0.4.0
+Summary: constraints satisfaction solver in Python
+Home-page: http://www.logilab.org/projects/constraint
+Author: Alexandre Fayolle
+Author-email: alexandre.fayolle@logilab.fr
+License: GPL
+Description: Extensible constraint satisfaction problem solver written in pure
+        Python, using constraint propagation algorithms. The
+        logilab.constraint module provides finite domains with arbitrary
+        values, finite interval domains, and constraints which can be applied
+        to variables linked to these domains.
+        
+Platform: UNKNOWN

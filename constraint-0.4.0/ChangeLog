@@ -1,0 +1,71 @@
+ChangeLog for logilab.constraint
+================================
+
+2008-08-07  --  0.4.0
+    * allow capture of solver output
+
+
+
+2005-09-05  --  0.3.0
+    * Added finite interval domains and constraints in module
+      constraint.fi
+
+    * constraint now depends on logilab.common to support a larger number
+      of python versions 
+
+    * Optimisation of finite domains by using copy on write
+
+    * Better heuristics for constraint queuing
+
+
+
+2005-06-17  --  0.2.7
+    * Added fd.InSet special constraint that tests for set inclusion
+
+    * bumped copyright
+
+    * pylint fixes
+
+
+
+2004-12-22  --  0.2.6
+    * Dropped support for python2.2, added support for python2.4
+
+    * Optimized version of Expression and BinaryExpression, as well as
+      several other optimizations lead to increased performance (money2 runs
+      almost 40% faster with the new release, queens about 20%)
+
+    * Optimizations in the search algorithm leads to important speedups
+      when only looking for a single solution (instead of performing an
+      exhaustive search of all solutions)
+
+    * Added a warning when psyco cannot be loaded
+
+
+
+2004-06-13  --  0.2.5
+    * logilab/debian packaging
+
+    * New constraint AllDistinct with linear narrowing time
+
+    * updated unit tests
+
+    * updated send+more=money example
+
+    * added RandomizingDistributor
+
+
+
+2002-10-16  --  0.2.3
+    * New distributors SplitDistributor and EnumeratorDistributor
+
+    * fast solution in examples/menza2.py
+
+    * Dichotomy distributors can now split domains in more than two parts.
+
+    * added timestamps to log messages
+
+    * updated queens.py to use the new EnumeratorDistributor (25% speed increase)
+
+
+

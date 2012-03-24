@@ -1,0 +1,21 @@
+This package implements constraint propagation algorithm to solve
+constraint satisfaction problem. It requires python 2.3 or later to
+work. Having psyco (http://psyco.sf.net) installed will definitely
+speed up things, but is not a requirement.
+
+It is released under the GNU Public License. 
+
+The documentation is in the doc/ directory. Examples are in the
+examples/ directory.
+
+Discussion about constraint should take place on the python-logic
+mailing list. Information on subscription and mailing list archives
+can be accessed at
+http://lists.logilab.org/mailman/listinfo/python-logic/
+
+Your feedback is very valuable to me. Please share tour experience
+with other users of the package on the mailing list.
+
+-- 
+Alexandre Fayolle
+
