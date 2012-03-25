@@ -2,16 +2,16 @@
 Tyler Young, David Schoonover, Nick Spear, and Scott Abbey
 
 
-        Our program will demonstrate the use of constraint optimization in creating employee schedules.  To demonstrate the usefulness of our program, we have developed an example situation where it might be deployed.
+Our program will demonstrate the use of constraint optimization in creating employee schedules.  To demonstrate the usefulness of our program, we have developed an example situation where it might be deployed.
 
 
 Example Situation: A university cafeteria manager needs to schedule student workers to help serve food.  The schedule is recreated every two weeks to help fit the needs of the students, who have many events they need to schedule their time around.  Since the student workers are only assisting the non-student employees, the number needed for each shift will also vary each day and each time the schedule is recreated.
 
 
-        A full-blown system to facilitate this scheduling would probably be best implemented as a web front-end to an AI program.  The manager can outline the hours needed and number of workers in each session for the days in the schedule period, then send a form out to all the student workers where they indicate that they are able to work, unable to work, or perhaps state some level of preference for each date, as appropriate. In addition, the manager might like to impose a maximum or minimum number of hours worked by each student in the period, and the student workers may like to declare their own maximum or minimum number of hours.  Since some shifts are long, it would be nice to allow workers to declare availability for partial shifts, perhaps breaking the schedule into half-hour blocks. For now, we’ll just work with the assumption that each shift must be worked in full (an administrator could allow shifts to be split in two by simply creating two adjacent shifts).
+A full-blown system to facilitate this scheduling would probably be best implemented as a web front-end to an AI program.  The manager can outline the hours needed and number of workers in each session for the days in the schedule period, then send a form out to all the student workers where they indicate that they are able to work, unable to work, or perhaps state some level of preference for each date, as appropriate. In addition, the manager might like to impose a maximum or minimum number of hours worked by each student in the period, and the student workers may like to declare their own maximum or minimum number of hours.  Since some shifts are long, it would be nice to allow workers to declare availability for partial shifts, perhaps breaking the schedule into half-hour blocks. For now, we’ll just work with the assumption that each shift must be worked in full (an administrator could allow shifts to be split in two by simply creating two adjacent shifts).
 
 
-        Since a front-end website as described would require a nontrivial amount of time to create, and the focus of the project is on the AI techniques used and not the data collection process, we’ll simply use text data files that simulate the output of such a web application.  Here are some example files that may be generated. For the sake of making the examples easy to follow, we’ll use an abbreviated scheduling period of 5 days with 3 shifts per day and a total of 15 student workers.  Also for simplicity, we’ll just use a file with specific formatting instead of a database or other sophisticated solution.
+Since a front-end website as described would require a nontrivial amount of time to create, and the focus of the project is on the AI techniques used and not the data collection process, we’ll simply use text data files that simulate the output of such a web application.  Here are some example files that may be generated. For the sake of making the examples easy to follow, we’ll use an abbreviated scheduling period of 5 days with 3 shifts per day and a total of 15 student workers.  Also for simplicity, we’ll just use a file with specific formatting instead of a database or other sophisticated solution.
 
 
 Each line could have a format like:
@@ -59,59 +59,6 @@ We’ll say availabilityLevel ranges from 0 to 2, with 2 being totally available
 15,5,1,1
 15,5,2,2
 15,5,3,2
-
-
-In a more human-readable notation, this sample data looks like this:
-
-
-User
-	Shift (Day.Number)
-	Availability
-	1
-	1.1
-	Yes
-	1
-	1.2
-	Yes
-	1
-	1.3
-	No
-	1
-	2.1
-	No
-	1
-	2.2
-	No
-	. . . 
-	
-
-	
-
-	2
-	1.1
-	If needed
-	2
-	1.2
-	No
-	2
-	1.3
-	If needed
-	2
-	2.1
-	Yes
-	2
-	2.2
-	If needed
-	. . .
-	
-
-	
-
-	15
-	5.3
-	Yes
-	
-
 
 
 In addition to these two files, there should also be a file with some extra parameters, allowing the manager to set some worker limits:
