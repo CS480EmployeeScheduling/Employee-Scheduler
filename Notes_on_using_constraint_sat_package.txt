@@ -1,7 +1,10 @@
 Notes on using the constraint satisfaction package (constraint-0.4.0):
 
 You'll need to install the package in your Python library. On a *nix operating system, this is done in the command line as follows:
-# cd /your/path/here/Employee-Scheduler/constraint-0.4.0/
+# cd /your/path/here/Employee-Scheduler/logilab-common-0.57.2/
+# sudo python setup.py build
+# sudo python setup.py install
+# cd ../constraint-0.4.0/
 # sudo python setup.py build
 # sudo python setup.py install
 
