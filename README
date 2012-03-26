@@ -1,0 +1,5 @@
+This is a utility, written in Python, for scheduling some number of workers with the goal of both satisfying the workers’ scheduling requests and fulfilling the organization’s needs for workers per shift. 
+
+The project relies on the logilab-constraint package, located in the contstraint-0.4.0 directory.
+"The [logilab-constraint] package is a constraint satisfaction problem solver written in 100% pure Python. The implementation uses constraint propagation algorithms. Constraints and Domain implementations are provided to work with finite domains and finite intervals. It should be fairly easy to add new kind of domains such as finite integer domains, together with specialized constraints."
+http://www.logilab.org/852
