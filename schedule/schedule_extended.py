@@ -4,12 +4,12 @@ import random
 # 3 shifts per day to fill, for 5 days, with a second worker required
 # for one particular shift (a busy day, for instance).
 # Total of 16 "person-shifts"
-variables = ()
+shifts = () # formerly called "variables"
 for worker_shift in range(3*5 + 1):
     string_representation = 's'+str(worker_shift)
     # Tuples are immutable, so we have to build this up
     # by concatenating to a new tuple (comma declares this a tuple)
-    variables = variables + ( string_representation, )
+    shifts = shifts + ( string_representation, )
 
 workers = ()
 for worker_num in range(16):
@@ -76,11 +76,8 @@ for shift_num in range(15):
     constraints.append( fd.make_expression( (string_rep,),
                                             "%s[1] != 'w1'"%string_rep))
 
-# We'll iterate over this in a moment, so let's make the name more transparent
-shifts = variables
-
 # Assign the rest of the workers' availabilities at random
-random.seed(18)
+random.seed(20)
 for worker_num in range(2,16):
     worker_str = 'w'+str(worker_num)
     for shift in shifts:
