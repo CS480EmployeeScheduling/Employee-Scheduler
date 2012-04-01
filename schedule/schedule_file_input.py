@@ -314,10 +314,13 @@ r = Repository(shift_tuple,domains,constraints)
 # Parameters for solve_best are Repository, cost_function, (bool)verbose
 #    (source found in constraint-0.4.0/propogation.py)
 solutions = []
-#for s in Solver().solve_best(r, cost_function, 1):
-#    solutions.append(s)
+for s in Solver().solve_best(r, cost_function, 1):
+    solutions.append(s)
     # This will append better solutions as it finds them; last one is best!
-solutions.append(Solver().solve_one(r,0))
+# Just look for one solution, for testing when we 
+# don't care how good the result is.
+# 1 for verbose, 0 for silent
+#solutions.append(Solver().solve_one(r,1))
 
 print "Found", len(solutions), "solutions."
 print "\n\nHere's the best solution we found:"
