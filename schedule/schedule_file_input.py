@@ -257,11 +257,12 @@ def cost_function( **kwargs ):
 ########################
 
 # Get the arguments passed
-# For now, just: shift_file worker_file availability_threshhold
+# For now, just: shift_file worker_file
 # Yeah, this can be done in a more robust way...
 shift_file = sys.argv[1]
 worker_file = sys.argv[2]
-availability_threshhold = int(sys.argv[3])
+availability_threshhold = 100
+
 
 # Process the files into simple lists of lists
 # that we can use in various places
@@ -278,49 +279,62 @@ shift_tuple = make_shift_tuple(shift_list)
 worker_tuple = make_worker_tuple(worker_list)
 
 
-# Set up the domains for each variable.
-# This will restrict each variable to the
-# indicated day and shift, and allow any
-# worker.
-domains = make_shift_domains(shift_list, worker_tuple)
-
-# Create a dictionary that can be easily traversed
-# to find the preference a worker has indicated
-# for a given day and shift
-worker_prefs = make_worker_prefs(worker_list)
-
-# Set up the constraints based on the given
-# availability threshhold
-constraints = []
-constraints = make_availability_constraints( constraints,
-                                             shift_tuple,
-                                             worker_tuple,
-                                             worker_prefs,
-                                             availability_threshhold )
-
-
-# We don't want to schedule the same worker at the same
-# shift more than once
-constraints.append(fd.AllDistinct(shift_tuple))
-
-
-# Repository objects are used to hold the variables, domains
-# and constraints describing the problem. A Solver object solves
-# the problem described by a Repository.
-r = Repository(shift_tuple,domains,constraints)
-
-# Solver( ) takes parameter Distributor if we want to try to optimize that way
-#   (cf. Solver source in constraint-0.4.0/propogation.py)
-# Parameters for solve_best are Repository, cost_function, (bool)verbose
-#    (source found in constraint-0.4.0/propogation.py)
+# Do this loop until solutions are found,
+# decrementing the availability_threshhold 
+# by 1 each time
 solutions = []
-for s in Solver().solve_best(r, cost_function, 1):
-    solutions.append(s)
+while len(solutions) < 1:
+    print "Availability: "+str(availability_threshhold)
+
+    # Set up the domains for each variable.
+    # This will restrict each variable to the
+    # indicated day and shift, and allow any
+    # worker.
+    domains = make_shift_domains(shift_list, worker_tuple)
+
+    # Create a dictionary that can be easily traversed
+    # to find the preference a worker has indicated
+    # for a given day and shift
+    worker_prefs = make_worker_prefs(worker_list)
+
+    # Set up the constraints based on the given
+    # availability threshhold
+    constraints = []
+    constraints = make_availability_constraints( constraints,
+                                                shift_tuple,
+                                                worker_tuple,
+                                                worker_prefs,
+                                                availability_threshhold )
+
+    # Decrement the availability_threshhold
+    # Okay, this probably shouldn't be done here
+    # but whatever
+    availability_threshhold -= 1
+
+    # We don't want to schedule the same worker at the same
+    # shift more than once
+    constraints.append(fd.AllDistinct(shift_tuple))
+
+
+    # Repository objects are used to hold the variables, domains
+    # and constraints describing the problem. A Solver object solves
+    # the problem described by a Repository.
+    r = Repository(shift_tuple,domains,constraints)
+
+    # Solver( ) takes parameter Distributor if we want to try to optimize that way
+    #   (cf. Solver source in constraint-0.4.0/propogation.py)
+    # Parameters for solve_best are Repository, cost_function, (bool)verbose
+    #    (source found in constraint-0.4.0/propogation.py)
+    for s in Solver().solve_best(r, cost_function, 0):
+        solutions.append(s)
     # This will append better solutions as it finds them; last one is best!
-# Just look for one solution, for testing when we 
-# don't care how good the result is.
-# 1 for verbose, 0 for silent
-#solutions.append(Solver().solve_one(r,1))
+    # Just look for one solution, for testing when we 
+    # don't care how good the result is.
+    # 1 for verbose, 0 for silent
+    #solutions.append(Solver().solve_one(r,1))
+
+
+
 
 print "Found", len(solutions), "solutions."
 print "\n\nHere's the best solution we found:"
