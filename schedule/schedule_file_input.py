@@ -1,5 +1,6 @@
 from logilab.constraint import *
 from pprint import pprint # "Pretty Print" -- for nicely printed dicts
+from time import strftime
 import random
 import sys
 
@@ -34,7 +35,7 @@ def load_shifts( file_path ):
         (day,shift,needed) = line.split(',')
         # Add 1 worker-shift for each that is needed
         for i in range(int(needed)):
-            shift_list.append([int(day),int(shift)])
+            shift_list.append([int(day),int(shift),i])
 
     return shift_list
 
@@ -77,12 +78,26 @@ def load_workers( file_path ):
 ################################################
 # This function takes a shift in the list format and
 # returns a string representation for that format.
+# This is for the shift without a unique identifier.
 #
 # @params shift A list [day,shift] to be converted
 ################################################
 def shift_to_string( shift ):
     string_representation = 'd'+str(shift[0])+'s'+str(shift[1])
     return string_representation
+
+
+################################################
+# This function takes a shift in the list format and
+# returns a string representation for that format.
+# This is for the shift with its unique identifier.
+#
+# @params shift A list [day,shift] to be converted
+################################################
+def unique_shift_to_string( shift ):
+    string_representation = 'd'+str(shift[0])+'s'+str(shift[1])+'n'+str(shift[2])
+    return string_representation
+
 
 ################################################
 # This function takes a worker's number and
@@ -96,6 +111,19 @@ def worker_to_string( worker_number ):
 
 
 ################################################
+# The keys in shift_tuple uniquely identify each
+# shift, but sometimes we only care about day and
+# shift, not which of the worker-shifts at that time.
+# So to get the ky for worker_prefs, we break off
+# Everything from 'n' to the end.
+################################################
+def shorten_shift_key(key):
+    split_key = key.split('n')
+    return split_key[0]
+
+
+
+################################################
 # This function takes input in the form of a list
 # of [day,shift] lists. It returns their representation
 # as a tuple for the variables of the repository
@@ -105,7 +133,7 @@ def worker_to_string( worker_number ):
 def make_shift_tuple( shift_list ):
     shifts = ()
     for shift in shift_list:
-        string_representation = shift_to_string(shift)
+        string_representation = unique_shift_to_string(shift)
         # Tuples are immutable, so we have to build this up
         # by concatenating to a new tuple (comma declares this a tuple)
         shifts = shifts + ( string_representation, )
@@ -153,8 +181,8 @@ def make_shift_domains( shift_list, workers_tuple ):
         # Get the possible values for this shift
         values = [('d'+str(shift[0]),'s'+str(shift[1]),worker)
                 for worker in workers_tuple ]
-                
-        shift_string = shift_to_string(shift)
+
+        shift_string = unique_shift_to_string(shift)
         domains[shift_string] = fd.FiniteDomain(values)
 
 
@@ -204,7 +232,8 @@ def make_worker_prefs( worker_list ):
 def make_availability_constraints( constraints, shift_tuple, worker_tuple, worker_prefs, availability_threshhold ):
     for worker in worker_tuple:
         for shift in shift_tuple:
-            key = worker + shift
+            short_key = shorten_shift_key(shift)
+            key = worker + short_key
             if worker_prefs[key] < availability_threshhold:
                 constraints.append( fd.make_expression(
                     (shift,), "%(a_shift)s[2] != '%(worker)s'" %
@@ -241,7 +270,8 @@ def cost_function( **kwargs ):
     
     worker_and_shift_l = []
     for key in kwargs:
-        worker_and_shift_l.append( str( kwargs[key][2] ) + str( key ) )
+        short_key = shorten_shift_key(key)
+        worker_and_shift_l.append( str( kwargs[key][2] ) + str( short_key ) )
 
     for constraint in worker_prefs:
         if constraint in worker_and_shift_l:
@@ -284,7 +314,7 @@ worker_tuple = make_worker_tuple(worker_list)
 # by 1 each time
 solutions = []
 while len(solutions) < 1:
-    print "Availability: "+str(availability_threshhold)
+    print strftime('%H:%M:%S')+": Availability: "+str(availability_threshhold)
 
     # Set up the domains for each variable.
     # This will restrict each variable to the
@@ -315,7 +345,6 @@ while len(solutions) < 1:
     # shift more than once
     constraints.append(fd.AllDistinct(shift_tuple))
 
-
     # Repository objects are used to hold the variables, domains
     # and constraints describing the problem. A Solver object solves
     # the problem described by a Repository.
@@ -325,14 +354,15 @@ while len(solutions) < 1:
     #   (cf. Solver source in constraint-0.4.0/propogation.py)
     # Parameters for solve_best are Repository, cost_function, (bool)verbose
     #    (source found in constraint-0.4.0/propogation.py)
-    for s in Solver().solve_best(r, cost_function, 0):
-        solutions.append(s)
+    #for s in Solver().solve_best(r, cost_function, 0):
+    #    solutions.append(s)
     # This will append better solutions as it finds them; last one is best!
     # Just look for one solution, for testing when we 
     # don't care how good the result is.
     # 1 for verbose, 0 for silent
-    #solutions.append(Solver().solve_one(r,1))
-
+    solutions.append(Solver().solve_one(r,0))
+    if solutions[0] == None:
+        solutions = []
 
 
 
