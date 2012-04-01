@@ -179,4 +179,4 @@ for s in Solver().solve_best(r, cost_function, 1):
 
 print "Found", len(solutions), "solutions."
 print "\n\nHere's the best solution we found:"
-pprint(solutions[len(solutions)-1])
+pprint(solutions[-1])
