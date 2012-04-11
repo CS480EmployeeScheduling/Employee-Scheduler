@@ -1,10 +1,120 @@
+################################################
+# This program schedules an arbitrary number of
+# employees for an arbitrary number of worker-shifts.
+# It takes into account both the availability 
+# preferences of the employees and the requirements
+# of the employer.
+#
+# Command line usage:
+#    python schedule_file_input.py some_shift_file some_worker_file [some_overlapping_shifts_file]
+# 
+# @author Scott Abbey
+# @author Tyler Young
+# @author David Schoonover
+# @author Nick Spear
+################################################
+
 from logilab.constraint import *
 from pprint import pprint # "Pretty Print" -- for nicely printed dicts
 from time import strftime
 import random
 import sys
 
+DEBUGGING = True
 
+################################################
+# Converts the shift list to a dictionary for easy searching
+#
+# @param shift_list A list of all worker-shifts, each specified as
+#                   [day, shift, number]
+# @return A dictionary whose keys are non-unique shifts (represented
+#         as strings) and whose values are the number of workers to
+#         schedule for that shift. E.g.,
+#              { 'd1s2': 3, 'd2s3': 1 }
+################################################
+def shift_list_to_dictionary( shift_list ):
+    shift_d = {}
+    for shift in shift_list:
+        day_and_shift = shift_to_string( shift[0:2] )
+        if day_and_shift not in shift_d:
+            shift_d[day_and_shift] = shift[2]
+        else:
+            shift_d[ day_and_shift ] = max( shift_d[day_and_shift], shift[2] )
+    return shift_d
+
+################################################
+# This function takes a list of non-unique overlapping shift
+# tuples (as returned by the load_overlapping_shifts() function)
+# and translates all shifts to their unique counterparts. E.g.,
+# if we had 3 workers at shift 2 of day 1, we would change all
+# instances of "d1s2" to 3 separate constraints involving
+# "d1s2n1", "d1s2n2", and "d1s2n3", respectively.
+#
+# @param nonunique_overlap A list of tuples, where each tuple
+#                          specifies the non-unique string
+#                          representation of 2 shifts that overlap.
+# @param shift_list A list of all worker-shifts, each specified as
+#                   [day, shift, number]
+# @return A list containing a number of tuples; each tuple
+#         specifies the unique string representation of
+#         two person-shifts that overlap one another.
+################################################
+def extend_overlapping_shifts_to_be_unique( nonunique_overlap, shift_list ):
+    unique_overlap_list = []
+
+    # Convert the list to a dictionary for easy searching
+    shift_d = shift_list_to_dictionary( shift_list )
+
+    for pair in nonunique_overlap:
+        if not ((pair[0] in shift_d) and (pair[1] in shift_d)):
+            raise ValueError
+
+        # For each unique shift associated with the first shift . . .
+        for i in range( shift_d[ pair[0] ] ):
+            # And each unique shift associated with the second . . .
+            for j in range( shift_d[ pair[1] ] ):
+                unique_overlap_list.append(
+                    ( extend_shift_key( pair[0], i ),
+                      extend_shift_key( pair[1], j ) ) )
+
+    return unique_overlap_list
+
+################################################
+# This function takes a path to a file and returns
+# a list of all the shifts that the file defines to be overlapping.
+# 
+# The format of the file is:
+# Any line starting with a # is a comment and not read
+# Any line starting with % indicates the end of data to be read
+# Any other line has the format: [day],[shift],[needed]
+# where day and shift identify the time the shift takes
+# place and needed is how many workers are required for that
+# shift.
+#
+# @param file_path the path to the file containing
+#                  shift definitions
+# @return A list containing a number of tuples; each tuple
+#         specifies the (non-unique) string representation of
+#         two shifts that overlap one another.
+################################################
+def load_overlapping_shifts( file_path ):
+    # Each entry in the overlap list is a tuple of two
+    # overlapping shifts
+    overlap_list = []
+    for line in open(file_path,'r').readlines():
+        if line[0] == "%": # denotes end of file to be read
+            break
+        elif line[0] == "#": # a comment, skip this line
+            continue
+        # If we get this far, we're just going to assume
+        # a well-formatted file.
+        (day_0, shift_0, day_1, shift_1) = line.split(',')
+        
+        overlap_list.append( ( shift_to_string( [int(day_0),
+                                                 int(shift_0)] ),
+                               shift_to_string( [int(day_1),
+                                                 int(shift_1)] ) ) )
+    return overlap_list
 
 ################################################
 # This function takes a path to a file and returns
@@ -20,7 +130,6 @@ import sys
 # @param file_path the path to the file containing
 #                  shift definitions
 ################################################
-
 def load_shifts( file_path ):
     shift_list = [] # Each entry is a list stating the day and shift of that day
     shift_file = open(file_path,'r')
@@ -92,7 +201,7 @@ def shift_to_string( shift ):
 # returns a string representation for that format.
 # This is for the shift with its unique identifier.
 #
-# @params shift A list [day,shift] to be converted
+# @params shift A list [day,shift,shift_number] to be converted
 ################################################
 def unique_shift_to_string( shift ):
     string_representation = 'd'+str(shift[0])+'s'+str(shift[1])+'n'+str(shift[2])
@@ -114,14 +223,24 @@ def worker_to_string( worker_number ):
 # The keys in shift_tuple uniquely identify each
 # shift, but sometimes we only care about day and
 # shift, not which of the worker-shifts at that time.
-# So to get the ky for worker_prefs, we break off
-# Everything from 'n' to the end.
+# So to get the key for worker_prefs, we break off
+# everything from 'n' to the end.
 ################################################
 def shorten_shift_key(key):
     split_key = key.split('n')
     return split_key[0]
 
-
+################################################
+# Sometimes we need to go the opposite direction of
+# the shorten_shift_key() function.
+# @param key A short shift key, specifying day and
+#            shift number. E.g., "d2s3"
+# @param shift_number A unique number for the person fulfilling
+#                     this shift. E.g., if 3 people are working
+#                     d2s3, you might pass 0, 1, or 2 here.
+################################################
+def extend_shift_key(key, shift_number):
+    return key + 'n' + str(shift_number)
 
 ################################################
 # This function takes input in the form of a list
@@ -185,7 +304,6 @@ def make_shift_domains( shift_list, workers_tuple ):
         shift_string = unique_shift_to_string(shift)
         domains[shift_string] = fd.FiniteDomain(values)
 
-
     return domains
 
 
@@ -208,6 +326,26 @@ def make_worker_prefs( worker_list ):
 
     return worker_prefs
 
+
+################################################
+# This function creates constraints based on overlap of
+# shifts.
+#
+# @params overlap_list A list containing tuples of string
+#                      representations of overlapping
+#                      person-shifts
+# @return A list of overlap constraints, formulated for the
+#         logilab solver, to be appended to the problem's
+#         constraint list
+################################################
+def make_overlapping_constraints( overlap_list ):
+    constraints = []
+    for shift_pair in overlap_list:
+        constraints.append( fd.make_expression(
+            shift_pair, "%(shift_0)s[2] != '%(shift_1)s[2]'" %
+            {'shift_0' : shift_pair[0], "shift_1": shift_pair[1]} ))
+
+    return constraints
 
 ################################################
 # This function adds constraints based on availability
@@ -287,7 +425,7 @@ def cost_function( **kwargs ):
 ########################
 
 # Get the arguments passed
-# For now, just: shift_file worker_file
+# This includes shift_file, worker_file, and optionally, overlap_file
 # Yeah, this can be done in a more robust way...
 shift_file = sys.argv[1]
 worker_file = sys.argv[2]
@@ -308,13 +446,24 @@ shift_tuple = make_shift_tuple(shift_list)
 # of each worker defined.
 worker_tuple = make_worker_tuple(worker_list)
 
+# Check for overlapping shifts
+overlapping_list = []
+try:
+    overlap_file = sys.argv[3]
+    # Overlapping list is a list containing a number of tuples:
+    # each tuple specifies the string rep. of 2 (unique) shifts that overlap
+    overlapping_list = extend_overlapping_shifts_to_be_unique(
+        load_overlapping_shifts( overlap_file ), shift_list )
+except IndexError:
+    overlapping_list = None
 
 # Do this loop until solutions are found,
 # decrementing the availability_threshhold 
 # by 1 each time
 solutions = []
 while len(solutions) < 1:
-    print strftime('%H:%M:%S')+": Availability: "+str(availability_threshhold)
+    if DEBUGGING:
+        print strftime('%H:%M:%S')+": Availability: "+str(availability_threshhold)
 
     # Set up the domains for each variable.
     # This will restrict each variable to the
@@ -335,6 +484,8 @@ while len(solutions) < 1:
                                                 worker_tuple,
                                                 worker_prefs,
                                                 availability_threshhold )
+    if overlapping_list:
+        constraints.extend( make_overlapping_constraints( overlapping_list ) )
 
     # Decrement the availability_threshhold
     # Okay, this probably shouldn't be done here
