@@ -350,7 +350,7 @@ def make_overlapping_constraints( overlap_list ):
 ################################################
 # This function adds constraints based on availability
 # preferences from the workers. If the worker's preference
-# level is below the given threshhold, the constraint
+# level is below the given threshold, the constraint
 # is added to the list.
 #
 # @params constraints A dictionary, possibly holding some
@@ -363,16 +363,16 @@ def make_overlapping_constraints( overlap_list ):
 # @params worker_prefs A dictionary with the preference level
 #                      of each worker for each shift
 #
-# @params availability_threshhold An integer from 0 to 100 specifying
+# @params availability_threshold An integer from 0 to 100 specifying
 #                                 the lowest availability level allowed
 #                                 to be worked for a shift.
 ################################################
-def make_availability_constraints( constraints, shift_tuple, worker_tuple, worker_prefs, availability_threshhold ):
+def make_availability_constraints( constraints, shift_tuple, worker_tuple, worker_prefs, availability_threshold ):
     for worker in worker_tuple:
         for shift in shift_tuple:
             short_key = shorten_shift_key(shift)
             key = worker + short_key
-            if worker_prefs[key] < availability_threshhold:
+            if worker_prefs[key] < availability_threshold:
                 constraints.append( fd.make_expression(
                     (shift,), "%(a_shift)s[2] != '%(worker)s'" %
                     {'a_shift' : shift, "worker": worker} ))
@@ -429,7 +429,7 @@ def cost_function( **kwargs ):
 # Yeah, this can be done in a more robust way...
 shift_file = sys.argv[1]
 worker_file = sys.argv[2]
-availability_threshhold = 100
+availability_threshold = 100
 
 
 # Process the files into simple lists of lists
@@ -458,12 +458,12 @@ except IndexError:
     overlapping_list = None
 
 # Do this loop until solutions are found,
-# decrementing the availability_threshhold 
+# decrementing the availability_threshold 
 # by 1 each time
 solutions = []
 while len(solutions) < 1:
     if DEBUGGING:
-        print strftime('%H:%M:%S')+": Availability: "+str(availability_threshhold)
+        print strftime('%H:%M:%S')+": Availability: "+str(availability_threshold)
 
     # Set up the domains for each variable.
     # This will restrict each variable to the
@@ -477,20 +477,20 @@ while len(solutions) < 1:
     worker_prefs = make_worker_prefs(worker_list)
 
     # Set up the constraints based on the given
-    # availability threshhold
+    # availability threshold
     constraints = []
     constraints = make_availability_constraints( constraints,
                                                 shift_tuple,
                                                 worker_tuple,
                                                 worker_prefs,
-                                                availability_threshhold )
+                                                availability_threshold )
     if overlapping_list:
         constraints.extend( make_overlapping_constraints( overlapping_list ) )
 
-    # Decrement the availability_threshhold
+    # Decrement the availability_threshold
     # Okay, this probably shouldn't be done here
     # but whatever
-    availability_threshhold -= 1
+    availability_threshold -= 1
 
     # We don't want to schedule the same worker at the same
     # shift more than once
