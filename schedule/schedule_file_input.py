@@ -70,9 +70,9 @@ def extend_overlapping_shifts_to_be_unique( nonunique_overlap, shift_list ):
             raise ValueError
 
         # For each unique shift associated with the first shift . . .
-        for i in range( shift_d[ pair[0] ] ):
+        for i in range( shift_d[ pair[0] ] + 1 ):
             # And each unique shift associated with the second . . .
-            for j in range( shift_d[ pair[1] ] ):
+            for j in range( shift_d[ pair[1] ] + 1):
                 unique_overlap_list.append(
                     ( extend_shift_key( pair[0], i ),
                       extend_shift_key( pair[1], j ) ) )
@@ -331,6 +331,9 @@ def make_worker_prefs( worker_list ):
 # This function creates constraints based on overlap of
 # shifts.
 #
+# @params constraints A dictionary, possibly holding some
+#                     constraints already
+#
 # @params overlap_list A list containing tuples of string
 #                      representations of overlapping
 #                      person-shifts
@@ -338,11 +341,10 @@ def make_worker_prefs( worker_list ):
 #         logilab solver, to be appended to the problem's
 #         constraint list
 ################################################
-def make_overlapping_constraints( overlap_list ):
-    constraints = []
+def make_overlapping_constraints( constraints, overlap_list ):
     for shift_pair in overlap_list:
         constraints.append( fd.make_expression(
-            shift_pair, "%(shift_0)s[2] != '%(shift_1)s[2]'" %
+            shift_pair, "%(shift_0)s[2] != %(shift_1)s[2]" %
             {'shift_0' : shift_pair[0], "shift_1": shift_pair[1]} ))
 
     return constraints
@@ -485,11 +487,9 @@ while len(solutions) < 1:
                                                 worker_prefs,
                                                 availability_threshold )
     if overlapping_list:
-        constraints.extend( make_overlapping_constraints( overlapping_list ) )
+        constraints = make_overlapping_constraints( constraints, overlapping_list )
 
     # Decrement the availability_threshold
-    # Okay, this probably shouldn't be done here
-    # but whatever
     availability_threshold -= 1
 
     # We don't want to schedule the same worker at the same
