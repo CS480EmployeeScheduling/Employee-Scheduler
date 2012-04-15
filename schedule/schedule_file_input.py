@@ -602,6 +602,24 @@ if worker_job_list:
 # decrementing the availability_threshold 
 # by 1 each time
 solutions = []
+
+
+
+# Create a dictionary that can be easily traversed
+# to find the preference a worker has indicated
+# for a given day and shift
+worker_prefs = make_worker_prefs(worker_list)
+
+
+static_constraints = []
+if overlapping_list:
+    static_constraints = make_overlapping_constraints( static_constraints, overlapping_list )
+        
+if worker_job_list:
+    static_constraints = make_job_constraints( static_constraints, worker_job_list, shift_job_tuple)
+
+
+
 while len(solutions) < 1:
     if DEBUGGING:
         print strftime('%H:%M:%S')+": Availability: "+str(availability_threshold)
@@ -612,24 +630,16 @@ while len(solutions) < 1:
     # worker
     domains = make_shift_domains(shift_list, worker_tuple)
 
-    # Create a dictionary that can be easily traversed
-    # to find the preference a worker has indicated
-    # for a given day and shift
-    worker_prefs = make_worker_prefs(worker_list)
 
     # Set up the constraints based on the given
     # availability threshold
-    constraints = []
+    constraints = static_constraints[:]
     constraints = make_availability_constraints( constraints,
                                                 shift_tuple,
                                                 worker_tuple,
                                                 worker_prefs,
                                                 availability_threshold )
-    if overlapping_list:
-        constraints = make_overlapping_constraints( constraints, overlapping_list )
-        
-    if worker_job_list:
-        constraints = make_job_constraints( constraints, worker_job_list, shift_job_tuple)
+    
 
     # Decrement the availability_threshold
     availability_threshold -= 1
