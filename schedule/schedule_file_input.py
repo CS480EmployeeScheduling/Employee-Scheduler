@@ -182,6 +182,46 @@ def load_workers( file_path ):
         worker_list.append([int(worker),int(day),int(shift),int(availability)]) 
     
     return worker_list
+    
+################################################
+
+################################################
+def load_worker_jobs( file_path ):
+    worker_job_list = []
+    worker_job_file = open(file_path,'r')
+    worker_job_lines = worker_job_file.readlines()
+    for line in worker_job_lines:
+        if line[0] == "%": # denotes end of file to be read
+            break
+        elif line[0] == "#": # a comment, skip this line
+            continue
+        # If we get this far, we're just going to assume
+        # a well-formatted file.
+        (worker,job) = line.split(',')
+        # Add this to the list
+        worker_job_list.append([int(worker),int(job),]) 
+    
+    return worker_job_list
+    
+################################################
+
+################################################
+def load_shift_jobs( file_path ):
+    shift_job_list = []
+    shift_job_file = open(file_path,'r')
+    shift_job_lines = shift_job_file.readlines()
+    for line in shift_job_lines:
+        if line[0] == "%": # denotes end of file to be read
+            break
+        elif line[0] == "#": # a comment, skip this line
+            continue
+        # If we get this far, we're just going to assume
+        # a well-formatted file.
+        (day,shift,job,number) = line.split(',')
+        # Add this to the list
+        shift_job_list.append([int(day),int(shift),int(job),int(number)]) 
+    
+    return shift_job_list
 
 
 ################################################
@@ -217,6 +257,19 @@ def unique_shift_to_string( shift ):
 def worker_to_string( worker_number ):
     string_representation = 'w'+str(worker_number)
     return string_representation
+ 
+ 
+################################################
+# This function takes a list specifying a shift
+# and its type of worker and make a string representation
+# of that shift.
+#
+# @param shift_job_item The shift to be translated
+# @param A number representing the worker number for that shift
+################################################   
+def shift_job_to_string ( shift_job_item, worker_number ):
+    string_rep = 'd' + str(shift_job_item[0]) + 's' + str(shift_job_item[1]) + 'n' + str(worker_number) + 'j' + str(shift_job_item[2])
+    return string_rep
 
 
 ################################################
@@ -283,6 +336,24 @@ def make_worker_tuple( worker_list ):
         workers = workers + ( string_representation, )
 
     return workers
+    
+################################################
+# A function to take a list specifying a shift and
+# its job.  Returns a tuple which contains information
+# for the shift day, shift number, shift worker number, and 
+# the job number needed for that specific entry.
+#
+# @param shift_job_list The shift list which specifies jobs
+################################################
+def make_shift_job_tuple( shift_job_list ):
+    shift_jobs = ()
+    for item in shift_job_list:
+        num_workers = item[3]
+        for x in xrange( 0,num_workers ):
+            string_representation = shift_job_to_string (item, x)
+            shift_jobs = shift_jobs + ( string_representation, )
+
+    return shift_jobs
 
 
 ################################################
@@ -303,7 +374,6 @@ def make_shift_domains( shift_list, workers_tuple ):
 
         shift_string = unique_shift_to_string(shift)
         domains[shift_string] = fd.FiniteDomain(values)
-
     return domains
 
 
@@ -330,6 +400,28 @@ def make_worker_prefs( worker_list ):
 ################################################
 # This function creates constraints based on overlap of
 # shifts.
+#
+# @params constraints A dictionary, possibly holding some
+#                     constraints already
+#
+# @params overlap_list A list containing tuples of string
+#                      representations of overlapping
+#                      person-shifts
+# @return A list of overlap constraints, formulated for the
+#         logilab solver, to be appended to the problem's
+#         constraint list
+################################################
+def make_overlapping_constraints( constraints, overlap_list ):
+    for shift_pair in overlap_list:
+        constraints.append( fd.make_expression(
+            shift_pair, "%(shift_0)s[2] != %(shift_1)s[2]" %
+            {'shift_0' : shift_pair[0], "shift_1": shift_pair[1]} ))
+
+    return constraints
+    
+################################################
+# This function creates constraints based on an employees
+# job and the amount of jobs needed on each shift
 #
 # @params constraints A dictionary, possibly holding some
 #                     constraints already
@@ -379,6 +471,32 @@ def make_availability_constraints( constraints, shift_tuple, worker_tuple, worke
                     (shift,), "%(a_shift)s[2] != '%(worker)s'" %
                     {'a_shift' : shift, "worker": worker} ))
 
+    return constraints
+    
+################################################
+# Creates constraints for job types.  If a worker
+# does not have the correct job type, that worker
+# cannot work that posistion for that shift, so 
+# a constraint is added.
+#
+# @param constraints A dictionary, possibly holding some
+#                    constraints already
+#
+# @param worker_job_list A list containing an entry for
+#                        a worker and his/her job number
+#
+# @param shift_job_tuple contains information for shift position
+#                        that require specific job types.
+################################################
+def make_job_constraints( constraints, worker_job_list, shift_job_tuple ):
+    for shift_job in shift_job_tuple:
+        for worker_job in worker_job_list:
+            if (int(shift_job[-1]) != worker_job[1]):
+                shift_key = shift_job[:6]
+                worker = 'w' + str(worker_job[0])
+                constraints.append( fd.make_expression(
+                    (shift_key,), "%(a_shift)s[2] != '%(a_worker)s'" %
+                    {'a_shift' : shift_key, "a_worker": worker} ))
     return constraints
 
 
@@ -448,16 +566,37 @@ shift_tuple = make_shift_tuple(shift_list)
 # of each worker defined.
 worker_tuple = make_worker_tuple(worker_list)
 
+
 # Check for overlapping shifts
 overlapping_list = []
 try:
     overlap_file = sys.argv[3]
-    # Overlapping list is a list containing a number of tuples:
-    # each tuple specifies the string rep. of 2 (unique) shifts that overlap
-    overlapping_list = extend_overlapping_shifts_to_be_unique(
-        load_overlapping_shifts( overlap_file ), shift_list )
+    if overlap_file == "none":
+        overlapping_list = None
+    else:
+        # Overlapping list is a list containing a number of tuples:
+        # each tuple specifies the string rep. of 2 (unique) shifts that overlap
+        overlapping_list = extend_overlapping_shifts_to_be_unique(
+            load_overlapping_shifts( overlap_file ), shift_list )
 except IndexError:
     overlapping_list = None
+    
+# Check for job specifications
+worker_job_list = []
+try:
+    workers_job_file = sys.argv[4]
+    # Overlapping list is a list containing a number of tuples:
+    # each tuple specifies the string rep. of 2 (unique) shifts that overlap
+    worker_job_list = load_worker_jobs( workers_job_file )
+except IndexError:
+    worker_job_list = None
+
+# Require shift-job file if worker-job file is specified
+if worker_job_list:
+    shift_job_list = []
+    shift_job_file = sys.argv[5]
+    shift_job_list = load_shift_jobs( shift_job_file )
+    shift_job_tuple = make_shift_job_tuple( shift_job_list )
 
 # Do this loop until solutions are found,
 # decrementing the availability_threshold 
@@ -470,7 +609,7 @@ while len(solutions) < 1:
     # Set up the domains for each variable.
     # This will restrict each variable to the
     # indicated day and shift, and allow any
-    # worker.
+    # worker
     domains = make_shift_domains(shift_list, worker_tuple)
 
     # Create a dictionary that can be easily traversed
@@ -488,6 +627,9 @@ while len(solutions) < 1:
                                                 availability_threshold )
     if overlapping_list:
         constraints = make_overlapping_constraints( constraints, overlapping_list )
+        
+    if worker_job_list:
+        constraints = make_job_constraints( constraints, worker_job_list, shift_job_tuple)
 
     # Decrement the availability_threshold
     availability_threshold -= 1
@@ -520,3 +662,4 @@ while len(solutions) < 1:
 print "Found", len(solutions), "solutions."
 print "\n\nHere's the best solution we found:"
 pprint(solutions[-1])
+
