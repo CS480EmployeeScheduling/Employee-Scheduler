@@ -613,12 +613,12 @@ worker_prefs = make_worker_prefs(worker_list)
 
 
 static_constraints = []
-if overlapping_list:
-    static_constraints = make_overlapping_constraints( static_constraints, overlapping_list )
-        
 if worker_job_list:
     static_constraints = make_job_constraints( static_constraints, worker_job_list, shift_job_tuple)
 
+if overlapping_list:
+    static_constraints = make_overlapping_constraints( static_constraints, overlapping_list )
+        
 
 
 while len(solutions) < 1:

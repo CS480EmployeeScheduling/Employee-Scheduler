@@ -3,3 +3,13 @@ This is a utility, written in Python, for scheduling some number of workers with
 The project relies on the logilab-constraint package, located in the contstraint-0.4.0 directory.
 "The [logilab-constraint] package is a constraint satisfaction problem solver written in 100% pure Python. The implementation uses constraint propagation algorithms. Constraints and Domain implementations are provided to work with finite domains and finite intervals. It should be fairly easy to add new kind of domains such as finite integer domains, together with specialized constraints."
 http://www.logilab.org/852
+
+The runnable code is located in the schedule directory, with the file schedule_file_input.py holding the main program. All other files in that directory are supplementary files containing example problems.
+
+To invoke the program, the constraint package must be installed. See the file Notes_on_using_constraint_sat_package.txt for more information.
+
+Once the constraint package is installed, the program can be invoked with the following:
+# python schedule_file_input.py shifts_medium.txt workers.txt overlapping.txt jobs.txt shift_jobs.txt
+
+The first input file, shifts_[difficulty].txt has several choices, which just have more or less shifts to fill.
+The overlapping, jobs, and shift_jobs are optional, but currently shift_jobs and jobs can only be listed when overlapping is used as well.
