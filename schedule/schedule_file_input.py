@@ -267,9 +267,10 @@ def worker_to_string( worker_number ):
 # @param shift_job_item The shift to be translated
 # @param A number representing the worker number for that shift
 ################################################   
-def shift_job_to_string ( shift_job_item, worker_number ):
-    string_rep = 'd' + str(shift_job_item[0]) + 's' + str(shift_job_item[1]) + 'n' + str(worker_number) + 'j' + str(shift_job_item[2])
-    return string_rep
+def shift_job_to_string_list ( shift_job_item, worker_number ):
+    string_worker = 'd' + str(shift_job_item[0]) + 's' + str(shift_job_item[1]) + 'n' + str(worker_number)
+    string_job = str(shift_job_item[2])
+    return [string_worker, string_job]
 
 
 ################################################
@@ -350,7 +351,7 @@ def make_shift_job_tuple( shift_job_list ):
     for item in shift_job_list:
         num_workers = item[3]
         for x in xrange( 0,num_workers ):
-            string_representation = shift_job_to_string (item, x)
+            string_representation = shift_job_to_string_list (item, x)
             shift_jobs = shift_jobs + ( string_representation, )
 
     return shift_jobs
@@ -491,8 +492,8 @@ def make_availability_constraints( constraints, shift_tuple, worker_tuple, worke
 def make_job_constraints( constraints, worker_job_list, shift_job_tuple ):
     for shift_job in shift_job_tuple:
         for worker_job in worker_job_list:
-            if (int(shift_job[-1]) != worker_job[1]):
-                shift_key = shift_job[:6]
+            if (int(shift_job[1]) != worker_job[1]):
+                shift_key = shift_job[0]
                 worker = 'w' + str(worker_job[0])
                 constraints.append( fd.make_expression(
                     (shift_key,), "%(a_shift)s[2] != '%(a_worker)s'" %
